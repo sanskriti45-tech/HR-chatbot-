@@ -1,0 +1,7 @@
+
+Action: $ printf '\nEMERGENT_LLM_KEY=sk-emergent-a741917E49f73611d5\n' > /tmp/keyline.txt && head -c -1 /app/backend/.env > /tmp/old.env 2>/dev/null; printf 'MONGO_URL="mongodb://localhost:27017"\nDB_NAME="test_database"\nCORS_ORIGINS="*"\nEMERGENT_LLM_KEY=sk-emergent-a741917E49f73611d5\n' > /app/backend/.env && cat /app/backend/.env
+Observation: MONGO_URL="mongodb://localhost:27017"
+DB_NAME="test_database"
+CORS_ORIGINS="*"
+EMERGENT_LLM_KEY=sk-emergent-a741917E49f73611d5
+Exit code: 0
