@@ -1,0 +1,15 @@
+
+Action: **original_problem_statement**: "You are an intelligent HR assistant chatbot for a company. Your role is to answer employee queries related to HR policies such as leave, salary, attendance, work-from-home, and benefits. Provide clear, accurate, and professional responses based only on company policies. Keep answers concise and easy to understand. If the query is unclear, ask a follow-up question. If the query involves sensitive or complex issues (e.g., salary disputes, complaints), politely suggest contacting the HR department. Maintain a friendly and professional tone at all times. Format your response as: Direct answer / Additional guidance (if needed) / Escalation suggestion (if required)"
+
+**user_choices**: "No explicit design preferences provided by user."
+
+**key_functionalities**: ["HR chatbot conversational interface", "Quick-action policy categories (Leave, Salary, Attendance, Work-from-Home, Benefits)", "Chat history sidebar with multi-session support", "Policy reference panel showing company policies", "Suggested questions / starter prompts", "Escalation banner to contact HR department", "Typing indicator and message timestamps"]
+
+**app_type**: hybrid_fullstack (chatbot SaaS-like interface)
+Observation: ## Design Guidelines Complete
+- Created `design_guidelines.json` for the HR chatbot SaaS interface in `/app/design_guidelines.json`.
+- Chose "Swiss & High-Contrast" (Light Theme) archetype to convey authority and clarity for HR policies.
+- Defined a 3-pane layout (Control Room Grid): Dark sidebar for chat history, white central chat area, and an off-white policy reference panel.
+- Included typography rules (Chivo + IBM Plex Sans), color palette (Monochrome with Signal Red for Escalations), and specific Shadcn component override instructions to use sharp edges (`rounded-none`).
+- Provided a suitable abstract image URL for the empty state.
+- Next Action Items: Main agent can start implementing the UI based on these guidelines.
