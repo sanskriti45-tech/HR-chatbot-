@@ -1,0 +1,46 @@
+
+Action: file_editor create /app/memory/PRD.md --file-text "# HR Assistant Chatbot – PRD
+
+## Original Problem Statement
+Build an intelligent HR assistant chatbot that answers employee queries on HR policies (leave, salary, attendance, work-from-home, benefits). Answers must be policy-grounded, concise, ask follow-ups when unclear, escalate sensitive issues to HR, and follow the format: Direct answer / Additional guidance / Escalation suggestion.
+
+## Architecture
+- **Backend**: FastAPI + MongoDB. LLM via `emergentintegrations` → Anthropic `claude-sonnet-4-5-20250929` using Emergent Universal LLM Key.
+- **Frontend**: React + Tailwind + Shadcn primitives. Single-page 3-pane Swiss/Brutalist layout.
+- **Routes (all `/api`)**: `/policies`, `/chat/sessions` (GET, POST), `/chat/sessions/{id}` (GET, DELETE), `/chat/message` (POST).
+
+## User Persona
+Employee at the company who needs quick policy answers without filing HR tickets.
+
+## Core Requirements
+- Strictly policy-grounded answers (5 seeded policies: leave, salary, attendance, WFH, benefits)
+- Output in 3-section format
+- Persistent multi-session chat history per browser
+- Escalate sensitive issues (salary disputes, complaints) to hr@company.com
+
+## What's Implemented (2026-02-25)
+- 5 seeded HR policies returned by `/api/policies`
+- Multi-turn chat with persistence (sessions + messages in MongoDB)
+- Session sidebar (create / load / delete)
+- Empty state with quick-prompt chips and suggested questions
+- Right-side Policy Library with expandable cards
+- Mailto escalation banner + footer contact
+- Typing indicator, message animations, sharp Swiss aesthetic with Chivo + IBM Plex Sans
+- 100% pass on backend (8/8) + frontend e2e tests
+
+## Backlog
+### P1
+- Admin UI to edit/upload company policies (currently hard-coded list)
+- Authentication (employee login) + per-user history isolation
+- Streaming responses for longer answers
+
+### P2
+- File/PDF policy ingestion with RAG over uploaded HR handbook
+- Slack/Teams integration so employees can ask Aria from chat tools
+- Analytics: top asked categories, escalation rate, response satisfaction
+- Rate limiting on `/api/chat/message`
+
+## Next Tasks
+- Decide auth requirement and policy-edit admin flow with stakeholders
+"
+Observation: Create successful: /app/memory/PRD.md
