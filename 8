@@ -1,0 +1,159 @@
+Now let me build the frontend in parallel - index.css, App.css, App.js, and the chatbot component.
+Action: file_editor create /app/frontend/src/index.css --file-text "@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: #ffffff;
+    color: #0a0a0a;
+}
+
+code,
+pre,
+.font-mono {
+    font-family: 'IBM Plex Mono', Menlo, Monaco, monospace;
+}
+
+.font-display {
+    font-family: 'Chivo', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 0 0% 4%;
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 4%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 4%;
+        --primary: 0 0% 4%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 0 0% 96%;
+        --secondary-foreground: 0 0% 9%;
+        --muted: 0 0% 96%;
+        --muted-foreground: 0 0% 32%;
+        --accent: 0 0% 96%;
+        --accent-foreground: 0 0% 9%;
+        --destructive: 350 100% 50%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 0 0% 90%;
+        --input: 0 0% 90%;
+        --ring: 0 0% 4%;
+        --radius: 0rem;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/* Typing indicator */
+.typing-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #0a0a0a;
+    margin-right: 4px;
+    animation: typing-bounce 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+.typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+@keyframes typing-bounce {
+    0%,
+    80%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    40% {
+        transform: translateY(-4px);
+        opacity: 1;
+    }
+}
+
+/* Message entrance animation */
+.msg-enter {
+    animation: msg-slide 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes msg-slide {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Custom scrollbar */
+.scroll-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+}
+.scroll-thin-dark::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Selection */
+::selection {
+    background: #0a0a0a;
+    color: #ffffff;
+}
+
+/* Reset focus rings to sharp */
+button:focus-visible,
+a:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+    outline: 2px solid #0000ff;
+    outline-offset: 2px;
+}
+
+/* Markdown-ish formatting inside bot messages */
+.bot-content strong {
+    font-family: 'Chivo', sans-serif;
+    font-weight: 700;
+    display: inline-block;
+    margin-top: 0.4rem;
+    margin-bottom: 0.15rem;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    color: #0a0a0a;
+}
+.bot-content p {
+    margin: 0 0 0.5rem 0;
+}
+.bot-content ul {
+    list-style: square;
+    padding-left: 1.1rem;
+    margin: 0.2rem 0 0.6rem 0;
+}
+.bot-content li {
+    margin-bottom: 0.15rem;
+}
+"
+Observation: Overwrite successful: /app/frontend/src/index.css
