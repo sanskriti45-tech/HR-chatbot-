@@ -1,0 +1,36 @@
+
+Action: $ tail -n 30 /var/log/supervisor/backend.err.log /var/log/supervisor/backend.out.log 2>/dev/null
+Observation: ==> /var/log/supervisor/backend.err.log <==
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [86]
+INFO:     Stopping reloader process [48]
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [190] using WatchFiles
+INFO:     Started server process [226]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [226]
+INFO:     Started server process [406]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [406]
+INFO:     Stopping reloader process [190]
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [516] using WatchFiles
+INFO:     Started server process [518]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+
+==> /var/log/supervisor/backend.out.log <==
+Exit code: 0
