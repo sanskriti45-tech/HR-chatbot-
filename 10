@@ -1,0 +1,22 @@
+
+Action: file_editor create /app/frontend/src/App.js --file-text "import \"@/App.css\";
+import { BrowserRouter, Routes, Route } from \"react-router-dom\";
+import { Toaster } from \"sonner\";
+import HRChatbot from \"@/pages/HRChatbot\";
+
+function App() {
+  return (
+    <div className=\"App\">
+      <BrowserRouter>
+        <Routes>
+          <Route path=\"/\" element={<HRChatbot />} />
+        </Routes>
+      </BrowserRouter>
+      <Toaster position=\"top-right\" richColors />
+    </div>
+  );
+}
+
+export default App;
+"
+Observation: Overwrite successful: /app/frontend/src/App.js
