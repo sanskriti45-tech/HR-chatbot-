@@ -1,0 +1,339 @@
+<Plan>
+Building HR Assistant Chatbot:
+- Backend: server.py with chat sessions/messages CRUD, /api/policies, /api/chat/message using emergentintegrations Claude Sonnet 4.5
+- Frontend: 3-pane Swiss/Brutalist layout (dark sidebar + white chat + policy panel), quick actions, escalation banner, typing indicator
+- Add Chivo + IBM Plex Sans/Mono fonts via index.css
+</Plan>
+Action: file_editor create /app/backend/server.py --file-text "from fastapi import FastAPI, APIRouter, HTTPException
+from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
+import logging
+from pathlib import Path
+from pydantic import BaseModel, Field
+from typing import List, Optional
+import uuid
+from datetime import datetime, timezone
+
+from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# MongoDB connection
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
+
+EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
+
+# ----- HR POLICIES (seeded company knowledge) -----
+HR_POLICIES = [
+    {
+        \"id\": \"leave\",
+        \"title\": \"Leave Policy\",
+        \"icon\": \"calendar\",
+        \"summary\": \"Annual, sick, casual, and parental leave entitlements.\",
+        \"details\": [
+            \"Annual Leave: 20 working days per calendar year, accrued monthly.\",
+            \"Sick Leave: 12 days per year. Medical certificate required for absences over 2 days.\",
+            \"Casual Leave: 6 days per year for personal/urgent matters.\",
+            \"Maternity Leave: 26 weeks of paid leave; Paternity Leave: 15 days paid.\",
+            \"Bereavement Leave: 5 days for immediate family members.\",
+            \"Leave must be requested via the HRMS portal at least 3 working days in advance (except emergencies).\",
+            \"Unused annual leave (max 10 days) can be carried over to the next year.\",
+        ],
+    },
+    {
+        \"id\": \"salary\",
+        \"title\": \"Salary & Compensation\",
+        \"icon\": \"wallet\",
+        \"summary\": \"Salary credit cycle, payslips, and reimbursements.\",
+        \"details\": [
+            \"Salary is credited on the last working day of every month.\",
+            \"Payslips are available on the HRMS portal under 'My Payroll' by the 5th of the following month.\",
+            \"Annual appraisals occur in April; revised salary is effective from May 1st.\",
+            \"Reimbursements (travel, internet, meals) must be submitted with receipts within 30 days.\",
+            \"Tax declarations (Form 12BB) must be submitted by January 31st each year.\",
+            \"For salary disputes or payslip discrepancies, please contact the HR department directly.\",
+        ],
+    },
+    {
+        \"id\": \"attendance\",
+        \"title\": \"Attendance Policy\",
+        \"icon\": \"clock\",
+        \"summary\": \"Working hours, clock-in rules, and overtime.\",
+        \"details\": [
+            \"Standard working hours: 9 hours/day, 5 days/week (Monday-Friday).\",
+            \"Core hours: 11:00 AM to 4:00 PM. Flexible start/end times allowed.\",
+            \"Clock-in via biometric or HRMS app. Three late marks in a month = half-day deduction.\",
+            \"Minimum 8 hours billable per day for full attendance credit.\",
+            \"Overtime beyond 10 hours/day requires manager approval and is compensated as comp-off.\",
+            \"Two consecutive missed days without notice will be treated as Loss of Pay (LOP).\",
+        ],
+    },
+    {
+        \"id\": \"wfh\",
+        \"title\": \"Work From Home\",
+        \"icon\": \"home\",
+        \"summary\": \"Hybrid work model and remote work guidelines.\",
+        \"details\": [
+            \"Hybrid model: Up to 2 WFH days per week, with manager approval.\",
+            \"Remote requests must be filed in HRMS by Friday for the upcoming week.\",
+            \"Employees must be reachable on Slack/Teams during working hours.\",
+            \"All meetings require camera-on participation unless bandwidth is limited.\",
+            \"Long-term remote (>1 month) requires VP-level approval and a signed remote work agreement.\",
+            \"Equipment (laptop, monitor) is provided; home internet is reimbursed up to ₹1,500/month.\",
+        ],
+    },
+    {
+        \"id\": \"benefits\",
+        \"title\": \"Benefits & Perks\",
+        \"icon\": \"gift\",
+        \"summary\": \"Health insurance, wellness, and learning benefits.\",
+        \"details\": [
+            \"Health Insurance: ₹5 lakh family floater covering self, spouse, and 2 children.\",
+            \"Term Life Insurance: 3x annual CTC, fully employer-paid.\",
+            \"Annual Health Checkup: Free comprehensive checkup at empanelled hospitals.\",
+            \"Learning & Development: ₹25,000/year reimbursement for courses and certifications.\",
+            \"Wellness: Free gym membership and 4 mental-health counseling sessions per year.\",
+            \"Employee Stock Options (ESOP): Eligible after 1 year of continuous service.\",
+            \"Referral Bonus: ₹50,000 per successful hire (paid after 6 months of joinee tenure).\",
+        ],
+    },
+]
+
+POLICY_CONTEXT = \"\n\n\".join(
+    f\"### {p['title']}\n\" + \"\n\".join(f\"- {d}\" for d in p['details'])
+    for p in HR_POLICIES
+)
+
+SYSTEM_PROMPT = f\"\"\"You are Aria, an intelligent HR assistant chatbot for the company.
+Your role is to answer employee queries strictly based on the company HR policies provided below.
+
+# COMPANY HR POLICIES
+{POLICY_CONTEXT}
+
+# RESPONSE RULES
+1. Answer ONLY based on the policies above. If a question is outside these policies, politely say so and suggest contacting HR.
+2. Keep answers concise, clear, and professional. Use plain language; avoid jargon.
+3. If the query is unclear or ambiguous, ask ONE focused follow-up question.
+4. For sensitive/complex issues (salary disputes, harassment complaints, performance grievances, terminations, personal medical issues), DO NOT attempt to resolve. Politely suggest contacting the HR department at hr@company.com.
+5. Maintain a friendly and professional tone. Use the employee's words back to them when helpful.
+6. Never invent policy numbers, names, or dates not in the policies above.
+
+# RESPONSE FORMAT
+Structure every response as:
+
+**Direct answer**
+A concise 1-3 sentence answer to the question.
+
+**Additional guidance** (only if useful)
+Practical next steps, links to HRMS sections, or related policy notes.
+
+**Escalation suggestion** (only if required)
+A short note recommending the employee contact the HR department, with the email hr@company.com.
+
+Omit sections that aren't needed. Keep total length under 200 words unless detail is genuinely required.
+\"\"\"
+
+
+# ----- Models -----
+class ChatSession(BaseModel):
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+
+class ChatMessage(BaseModel):
+    id: str
+    session_id: str
+    role: str  # 'user' | 'assistant'
+    content: str
+    created_at: str
+
+class CreateSessionResponse(BaseModel):
+    session: ChatSession
+
+class SessionDetail(BaseModel):
+    session: ChatSession
+    messages: List[ChatMessage]
+
+class SendMessageRequest(BaseModel):
+    session_id: Optional[str] = None
+    message: str
+
+class SendMessageResponse(BaseModel):
+    session_id: str
+    user_message: ChatMessage
+    assistant_message: ChatMessage
+
+class Policy(BaseModel):
+    id: str
+    title: str
+    icon: str
+    summary: str
+    details: List[str]
+
+
+# ----- App -----
+app = FastAPI()
+api_router = APIRouter(prefix=\"/api\")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _make_title(text: str) -> str:
+    t = text.strip().split(\"\n\")[0]
+    if len(t) > 48:
+        t = t[:45] + \"...\"
+    return t or \"New conversation\"
+
+
+@api_router.get(\"/\")
+async def root():
+    return {\"message\": \"HR Assistant API\", \"status\": \"ok\"}
+
+
+@api_router.get(\"/policies\", response_model=List[Policy])
+async def get_policies():
+    return [Policy(**p) for p in HR_POLICIES]
+
+
+@api_router.post(\"/chat/sessions\", response_model=ChatSession)
+async def create_session():
+    session = {
+        \"id\": str(uuid.uuid4()),
+        \"title\": \"New conversation\",
+        \"created_at\": _now(),
+        \"updated_at\": _now(),
+    }
+    await db.chat_sessions.insert_one(session.copy())
+    return ChatSession(**session)
+
+
+@api_router.get(\"/chat/sessions\", response_model=List[ChatSession])
+async def list_sessions():
+    sessions = await db.chat_sessions.find({}, {\"_id\": 0}).sort(\"updated_at\", -1).to_list(200)
+    return [ChatSession(**s) for s in sessions]
+
+
+@api_router.get(\"/chat/sessions/{session_id}\", response_model=SessionDetail)
+async def get_session(session_id: str):
+    session = await db.chat_sessions.find_one({\"id\": session_id}, {\"_id\": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail=\"Session not found\")
+    messages = await db.chat_messages.find({\"session_id\": session_id}, {\"_id\": 0}).sort(\"created_at\", 1).to_list(1000)
+    return SessionDetail(
+        session=ChatSession(**session),
+        messages=[ChatMessage(**m) for m in messages],
+    )
+
+
+@api_router.delete(\"/chat/sessions/{session_id}\")
+async def delete_session(session_id: str):
+    await db.chat_sessions.delete_one({\"id\": session_id})
+    await db.chat_messages.delete_many({\"session_id\": session_id})
+    return {\"deleted\": session_id}
+
+
+@api_router.post(\"/chat/message\", response_model=SendMessageResponse)
+async def send_message(req: SendMessageRequest):
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=400, detail=\"Message cannot be empty\")
+
+    # Resolve or create session
+    session_id = req.session_id
+    if session_id:
+        session = await db.chat_sessions.find_one({\"id\": session_id}, {\"_id\": 0})
+        if not session:
+            raise HTTPException(status_code=404, detail=\"Session not found\")
+    else:
+        session = {
+            \"id\": str(uuid.uuid4()),
+            \"title\": _make_title(req.message),
+            \"created_at\": _now(),
+            \"updated_at\": _now(),
+        }
+        await db.chat_sessions.insert_one(session.copy())
+        session_id = session[\"id\"]
+
+    # Persist user message
+    user_msg = {
+        \"id\": str(uuid.uuid4()),
+        \"session_id\": session_id,
+        \"role\": \"user\",
+        \"content\": req.message.strip(),
+        \"created_at\": _now(),
+    }
+    await db.chat_messages.insert_one(user_msg.copy())
+
+    # Build LLM chat with prior history
+    history = await db.chat_messages.find(
+        {\"session_id\": session_id}, {\"_id\": 0}
+    ).sort(\"created_at\", 1).to_list(1000)
+
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=session_id,
+        system_message=SYSTEM_PROMPT,
+    ).with_model(\"anthropic\", \"claude-sonnet-4-5-20250929\")
+
+    # Send the latest user message; emergentintegrations manages history per session_id
+    try:
+        reply_text = await chat.send_message(UserMessage(text=req.message.strip()))
+    except Exception as e:
+        logger.error(f\"LLM error: {e}\")
+        reply_text = (
+            \"**Direct answer**\nI'm having trouble reaching the assistant service right now.\n\n\"
+            \"**Escalation suggestion**\nPlease try again shortly, or email hr@company.com for urgent queries.\"
+        )
+
+    assistant_msg = {
+        \"id\": str(uuid.uuid4()),
+        \"session_id\": session_id,
+        \"role\": \"assistant\",
+        \"content\": str(reply_text),
+        \"created_at\": _now(),
+    }
+    await db.chat_messages.insert_one(assistant_msg.copy())
+
+    # Update session title if it's the first exchange + bump updated_at
+    update_doc = {\"updated_at\": _now()}
+    if len(history) <= 1:
+        update_doc[\"title\"] = _make_title(req.message)
+    await db.chat_sessions.update_one({\"id\": session_id}, {\"$set\": update_doc})
+
+    return SendMessageResponse(
+        session_id=session_id,
+        user_message=ChatMessage(**user_msg),
+        assistant_message=ChatMessage(**assistant_msg),
+    )
+
+
+# Include the router
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=[\"*\"],
+    allow_headers=[\"*\"],
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
+logger = logging.getLogger(__name__)
+
+
+@app.on_event(\"shutdown\")
+async def shutdown_db_client():
+    client.close()
+"
+Observation: Overwrite successful: /app/backend/server.py
