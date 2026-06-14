@@ -1,0 +1,10 @@
+Now let me restart backend (since we modified .env), check supervisor, and lint.
+Action: $ sudo supervisorctl restart backend && sleep 2 && sudo supervisorctl status
+Observation: backend: stopped
+backend: started
+backend                          RUNNING   pid 516, uptime 0:00:04
+code-server                      RUNNING   pid 191, uptime 0:03:07
+frontend                         RUNNING   pid 192, uptime 0:03:07
+mongodb                          RUNNING   pid 193, uptime 0:03:07
+nginx-code-proxy                 RUNNING   pid 189, uptime 0:03:07
+Exit code: 0
